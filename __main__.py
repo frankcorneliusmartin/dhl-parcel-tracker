@@ -15,7 +15,7 @@ url = f'https://track-and-trace.dhlparcel.nl/graphql?query=query%20TrackAndTrace
 toaster = ToastNotifier()
 toaster.show_toast("Watching your package",
                    f"Notifications will be posted",
-                   icon_path= "DELIVERED" + ".ico",
+                   icon_path= "1" + ".ico",
                    duration=3)
 
 def open_webpage(systray):
@@ -44,10 +44,10 @@ try:
 
         # keep track of the previous state. If the state changes we throw
         # a notification
-        old_state = stage
+        old_state = state
 
         # initial icon
-        icon = f"{state}.ico"
+        icon = f"{state.value}.ico"
 
         # retrieve parcel state
         with urllib.request.urlopen(url) as response:
@@ -59,23 +59,31 @@ try:
 
         # search for the higsest completed stage and set the state
         for idx, stage in enumerate(stages):
-            if stage.get("complete"):
-                state = ParcelState(idx)
+            # print(stage)
+            if stage.get("completed"):
+                state = ParcelState(idx+1)
 
         # in case the state has changed, notify the user and update the
         # tray-icon
-        if stage is not old_state:
+        # print(state)
+        # print(old_state)
+        if state != old_state:
+            # print(state)
+            icon = f"{state.value}.ico"
             toaster.show_toast("Update from your parcel!", \
-                f"New state: {stage}", icon_path=f"{state}.ico",duration=10)
+                f"New state: {stage}", icon_path=icon, duration=10)
             systray.update(icon=icon)
 
         # update tray tooltip
         interval = tat.get("pointInTimeInterval")
         parse = lambda t: datetime.datetime.strptime(t, "%Y-%m-%dT%H:%M:%S%z")
-        from_ = parse(interval.get("from"))
-        to_ = parse(interval.get("to"))
-        systray.update(hover_text=\
-            f"{from_.strftime('%H:%M')}-{to_.strftime('%H:%M (%d/%m)')}")
+        try:
+            from_ = parse(interval.get("from"))
+            to_ = parse(interval.get("to"))
+            systray.update(hover_text=\
+                f"{from_.strftime('%H:%M')}-{to_.strftime('%H:%M (%d/%m)')}")
+        except Exception:
+            systray.update(hover_text=f"Tijdsvlak niet beschikbaar")
 
         # wait 10 second not to overflow the server with requests.
         time.sleep(10)
